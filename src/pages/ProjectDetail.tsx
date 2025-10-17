@@ -163,7 +163,6 @@ const ProjectDetail = () => {
 
     if (error) {
       toast.error('Erro ao salvar notas');
-      console.error('Erro ao salvar notas:', error);
       return;
     }
 
@@ -190,7 +189,6 @@ const ProjectDetail = () => {
 
     if (error) {
       toast.error('Erro ao adicionar tarefa');
-      console.error('Erro ao adicionar tarefa:', error);
       return;
     }
 
