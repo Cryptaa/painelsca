@@ -99,28 +99,38 @@ const Admin = () => {
 
   const loadUsers = async () => {
     setLoading(true);
-    const { data, error } = await (supabase as any)
+    
+    // Buscar todos os profiles
+    const { data: profilesData, error: profilesError } = await (supabase as any)
       .from("profiles")
-      .select(`
-        *,
-        user_roles!inner(role)
-      `)
+      .select("*")
       .order("created_at", { ascending: false });
 
-    if (error) {
+    if (profilesError) {
       toast({
         title: "Erro ao carregar usuários",
-        description: error.message,
+        description: profilesError.message,
         variant: "destructive",
       });
-    } else {
-      // Mapear dados para incluir is_admin baseado nas roles
-      const profilesWithRoles = (data || []).map((profile: any) => ({
-        ...profile,
-        is_admin: profile.user_roles?.some((ur: any) => ur.role === 'admin') || false
-      }));
-      setProfiles(profilesWithRoles);
+      setLoading(false);
+      return;
     }
+
+    // Buscar todas as roles
+    const { data: rolesData } = await (supabase as any)
+      .from("user_roles")
+      .select("user_id, role");
+
+    // Combinar os dados
+    const profilesWithRoles = (profilesData || []).map((profile: any) => {
+      const userRoles = (rolesData || []).filter((r: any) => r.user_id === profile.id);
+      return {
+        ...profile,
+        is_admin: userRoles.some((r: any) => r.role === 'admin')
+      };
+    });
+    
+    setProfiles(profilesWithRoles);
     setLoading(false);
   };
 
