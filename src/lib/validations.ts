@@ -55,7 +55,11 @@ export const ideaSchema = z.object({
 export const learningSchema = z.object({
   title: z.string().trim().min(1, { message: "Título é obrigatório" }).max(200, { message: "Título deve ter no máximo 200 caracteres" }),
   description: z.string().max(10000, { message: "Descrição deve ter no máximo 10000 caracteres" }),
+  category: z.enum(['erro', 'vitoria', 'licao', 'reflexao'], { message: "Categoria é obrigatória" }),
+  date: z.string(),
   tags: z.array(z.string().max(50)).max(20, { message: "Máximo de 20 tags" }).optional(),
+  linked_project_id: z.string().uuid().optional(),
+  linked_idea_id: z.string().uuid().optional(),
 });
 
 export const personalNoteSchema = z.object({
