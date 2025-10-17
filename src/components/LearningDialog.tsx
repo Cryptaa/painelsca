@@ -114,16 +114,20 @@ export const LearningDialog = ({ open, onOpenChange, learning, onSuccess }: Lear
     setIsSaving(true);
 
     try {
+      console.log('Category before validation:', category);
+      
       // Validate all fields
       const validatedData = learningSchema.parse({
         title: title.trim(),
-        description: description.trim() || undefined,
+        description: description.trim() || '',
         category,
         tags: tags.length > 0 ? tags : undefined,
         date: date.toISOString(),
         linked_project_id: linkedProjectId || undefined,
         linked_idea_id: linkedIdeaId || undefined,
       });
+
+      console.log('Validated data:', validatedData);
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -137,6 +141,8 @@ export const LearningDialog = ({ open, onOpenChange, learning, onSuccess }: Lear
         is_favorite: isFavorite,
         user_id: user.id,
       };
+
+      console.log('Learning data to be inserted:', learningData);
 
       if (learning) {
         const { error } = await (supabase as any)
