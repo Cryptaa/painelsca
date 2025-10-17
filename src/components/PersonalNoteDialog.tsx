@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { personalNoteSchema } from "@/lib/validations";
+import { z } from "zod";
 
 interface PersonalNote {
   id: string;
@@ -116,53 +118,68 @@ export const PersonalNoteDialog = ({ open, onOpenChange, note, onSuccess }: Pers
     }
 
     setIsSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
 
-    const noteData = {
-      title: title.trim(),
-      content: content.trim(),
-      tags,
-      linked_project_id: linkedProjectId || null,
-      linked_idea_id: linkedIdeaId || null,
-      reminder_date: reminderDate?.toISOString() || null,
-      user_id: user.id,
-    };
+    try {
+      // Validate all fields
+      const validatedData = personalNoteSchema.parse({
+        title: title.trim(),
+        content: content.trim() || undefined,
+        tags: tags.length > 0 ? tags : undefined,
+        linked_project_id: linkedProjectId || undefined,
+        linked_idea_id: linkedIdeaId || undefined,
+        reminder_date: reminderDate?.toISOString() || undefined,
+      });
 
-    if (note) {
-      const { error } = await (supabase as any)
-        .from('personal_notes')
-        .update(noteData)
-        .eq('id', note.id);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setIsSaving(false);
+        return;
+      }
 
-      if (error) {
-        if (!isAutoSave) toast.error('Erro ao atualizar anotação');
-        console.error('Erro:', error);
+      const noteData = {
+        ...validatedData,
+        user_id: user.id,
+      };
+
+      if (note) {
+        const { error } = await (supabase as any)
+          .from('personal_notes')
+          .update(noteData)
+          .eq('id', note.id);
+
+        if (error) {
+          if (!isAutoSave) toast.error('Erro ao atualizar anotação');
+        } else {
+          setLastSaved(new Date());
+          if (!isAutoSave) {
+            toast.success('Anotação atualizada!');
+            onSuccess();
+            onOpenChange(false);
+          }
+        }
       } else {
-        setLastSaved(new Date());
-        if (!isAutoSave) {
-          toast.success('Anotação atualizada!');
+        const { error } = await (supabase as any)
+          .from('personal_notes')
+          .insert(noteData);
+
+        if (error) {
+          toast.error('Erro ao criar anotação');
+        } else {
+          toast.success('Anotação criada!');
           onSuccess();
           onOpenChange(false);
+          resetForm();
         }
       }
-    } else {
-      const { error } = await (supabase as any)
-        .from('personal_notes')
-        .insert(noteData);
-
-      if (error) {
-        toast.error('Erro ao criar anotação');
-        console.error('Erro:', error);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        if (!isAutoSave) toast.error(`Erro de validação: ${error.errors[0].message}`);
       } else {
-        toast.success('Anotação criada!');
-        onSuccess();
-        onOpenChange(false);
-        resetForm();
+        if (!isAutoSave) toast.error('Erro inesperado ao salvar anotação');
       }
+    } finally {
+      setIsSaving(false);
     }
-
-    setIsSaving(false);
   };
 
   const addTag = () => {

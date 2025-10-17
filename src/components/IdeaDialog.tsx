@@ -13,6 +13,8 @@ import { Idea } from "@/pages/Ideas";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
+import { ideaSchema } from "@/lib/validations";
+import { z } from "zod";
 
 interface IdeaDialogProps {
   open: boolean;
@@ -101,59 +103,98 @@ export const IdeaDialog = ({ open, onOpenChange, idea, onSuccess }: IdeaDialogPr
     e.preventDefault();
     setLoading(true);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      // Validate all fields
+      const validatedData = ideaSchema.parse({
+        title: formData.title,
+        description: formData.description || undefined,
+        brainstorm: formData.brainstorm || undefined,
+        category: formData.category || undefined,
+        project_type: formData.project_type || undefined,
+        main_goal: formData.main_goal || undefined,
+        target_audience: formData.target_audience || undefined,
+        estimated_time: formData.estimated_time || undefined,
+        main_risk: formData.main_risk || undefined,
+        main_difficulty: formData.main_difficulty || undefined,
+        personal_motivation: formData.personal_motivation || undefined,
+        notes: formData.notes || undefined,
+        tags: tags.length > 0 ? tags : undefined,
+        required_resources: resources.length > 0 ? resources : undefined,
+      });
 
-    const dataToSave = {
-      ...formData,
-      user_id: user.id,
-      tags,
-      required_resources: resources,
-      checklist,
-    };
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
-    if (idea) {
-      const { error } = await (supabase as any)
-        .from("ideas")
-        .update(dataToSave)
-        .eq("id", idea.id);
+      const dataToSave = {
+        ...validatedData,
+        user_id: user.id,
+        progress: formData.progress,
+        status: formData.status,
+        profit_potential: formData.profit_potential,
+        is_favorite: formData.is_favorite,
+        checklist,
+      };
 
-      if (error) {
+      if (idea) {
+        const { error } = await (supabase as any)
+          .from("ideas")
+          .update(dataToSave)
+          .eq("id", idea.id);
+
+        if (error) {
+          toast({
+            title: "Erro ao atualizar ideia",
+            description: error.message,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Ideia atualizada",
+            description: "A ideia foi atualizada com sucesso",
+          });
+          onSuccess();
+          onOpenChange(false);
+        }
+      } else {
+        const { error } = await (supabase as any)
+          .from("ideas")
+          .insert(dataToSave);
+
+        if (error) {
+          toast({
+            title: "Erro ao criar ideia",
+            description: error.message,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Ideia criada",
+            description: "A ideia foi criada com sucesso",
+          });
+          onSuccess();
+          onOpenChange(false);
+        }
+      }
+    } catch (error) {
+      if (error instanceof z.ZodError) {
         toast({
-          title: "Erro ao atualizar ideia",
-          description: error.message,
+          title: "Erro de validação",
+          description: error.errors[0].message,
           variant: "destructive",
         });
       } else {
         toast({
-          title: "Ideia atualizada",
-          description: "A ideia foi atualizada com sucesso",
-        });
-        onSuccess();
-        onOpenChange(false);
-      }
-    } else {
-      const { error } = await (supabase as any)
-        .from("ideas")
-        .insert(dataToSave);
-
-      if (error) {
-        toast({
-          title: "Erro ao criar ideia",
-          description: error.message,
+          title: "Erro inesperado",
+          description: "Ocorreu um erro ao processar sua solicitação",
           variant: "destructive",
         });
-      } else {
-        toast({
-          title: "Ideia criada",
-          description: "A ideia foi criada com sucesso",
-        });
-        onSuccess();
-        onOpenChange(false);
       }
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const addTag = () => {

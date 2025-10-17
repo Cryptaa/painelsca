@@ -15,6 +15,8 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { learningSchema } from "@/lib/validations";
+import { z } from "zod";
 
 interface Learning {
   id: string;
@@ -110,53 +112,68 @@ export const LearningDialog = ({ open, onOpenChange, learning, onSuccess }: Lear
     }
 
     setIsSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
 
-    const learningData = {
-      title: title.trim(),
-      description: description.trim(),
-      category,
-      tags,
-      is_public: isPublic,
-      is_favorite: isFavorite,
-      date: date.toISOString(),
-      linked_project_id: linkedProjectId || null,
-      linked_idea_id: linkedIdeaId || null,
-      user_id: user.id,
-    };
+    try {
+      // Validate all fields
+      const validatedData = learningSchema.parse({
+        title: title.trim(),
+        description: description.trim() || undefined,
+        category,
+        tags: tags.length > 0 ? tags : undefined,
+        date: date.toISOString(),
+        linked_project_id: linkedProjectId || undefined,
+        linked_idea_id: linkedIdeaId || undefined,
+      });
 
-    if (learning) {
-      const { error } = await (supabase as any)
-        .from('learnings')
-        .update(learningData)
-        .eq('id', learning.id);
-
-      if (error) {
-        toast.error('Erro ao atualizar aprendizado');
-        console.error('Erro:', error);
-      } else {
-        toast.success('Aprendizado atualizado!');
-        onSuccess();
-        onOpenChange(false);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setIsSaving(false);
+        return;
       }
-    } else {
-      const { error } = await (supabase as any)
-        .from('learnings')
-        .insert(learningData);
 
-      if (error) {
-        toast.error('Erro ao criar aprendizado');
-        console.error('Erro:', error);
+      const learningData = {
+        ...validatedData,
+        is_public: isPublic,
+        is_favorite: isFavorite,
+        user_id: user.id,
+      };
+
+      if (learning) {
+        const { error } = await (supabase as any)
+          .from('learnings')
+          .update(learningData)
+          .eq('id', learning.id);
+
+        if (error) {
+          toast.error('Erro ao atualizar aprendizado');
+        } else {
+          toast.success('Aprendizado atualizado!');
+          onSuccess();
+          onOpenChange(false);
+        }
       } else {
-        toast.success('Aprendizado criado!');
-        onSuccess();
-        onOpenChange(false);
-        resetForm();
+        const { error } = await (supabase as any)
+          .from('learnings')
+          .insert(learningData);
+
+        if (error) {
+          toast.error('Erro ao criar aprendizado');
+        } else {
+          toast.success('Aprendizado criado!');
+          onSuccess();
+          onOpenChange(false);
+          resetForm();
+        }
       }
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast.error(`Erro de validação: ${error.errors[0].message}`);
+      } else {
+        toast.error('Erro inesperado ao salvar aprendizado');
+      }
+    } finally {
+      setIsSaving(false);
     }
-
-    setIsSaving(false);
   };
 
   const addTag = () => {
