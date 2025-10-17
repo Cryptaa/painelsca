@@ -66,6 +66,10 @@ const Admin = () => {
     checkAdminAndLoadData();
   }, []);
 
+  // NOTE: This client-side check is for UX only.
+  // Actual authorization is enforced by RLS policies on the backend.
+  // The RLS policies prevent non-admin users from accessing sensitive data
+  // even if they bypass this client-side check.
   const checkAdminAndLoadData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     
@@ -234,12 +238,31 @@ const Admin = () => {
   const handleSaveProfile = async () => {
     if (!editingProfile) return;
 
+    // Validate inputs
+    if (profileForm.full_name && profileForm.full_name.length > 100) {
+      toast({
+        title: "Erro de validação",
+        description: "Nome muito longo (máximo 100 caracteres)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (profileForm.phone && profileForm.phone.trim() && !/^\+?[1-9]\d{0,14}$/.test(profileForm.phone)) {
+      toast({
+        title: "Erro de validação",
+        description: "Formato de telefone inválido",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Atualizar informações do perfil
     const { error: profileError } = await (supabase as any)
       .from("profiles")
       .update({
-        full_name: profileForm.full_name,
-        phone: profileForm.phone
+        full_name: profileForm.full_name?.trim() || null,
+        phone: profileForm.phone?.trim() || null
       })
       .eq("id", editingProfile.id);
 
@@ -309,14 +332,52 @@ const Admin = () => {
       return;
     }
 
+    // Validate inputs
+    if (!subForm.plan_name?.trim()) {
+      toast({
+        title: "Erro de validação",
+        description: "Nome do plano é obrigatório",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (subForm.plan_name.trim().length > 100) {
+      toast({
+        title: "Erro de validação",
+        description: "Nome do plano deve ter no máximo 100 caracteres",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const price = subForm.price ? parseFloat(subForm.price) : null;
+    if (price !== null && (price < 0 || price > 999999.99)) {
+      toast({
+        title: "Erro de validação",
+        description: "Preço inválido (deve estar entre 0 e 999999.99)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (subForm.notes && subForm.notes.length > 1000) {
+      toast({
+        title: "Erro de validação",
+        description: "Notas devem ter no máximo 1000 caracteres",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const { error } = await (supabase as any)
       .from("subscriptions")
       .insert({
         user_id: selectedUser,
-        plan_name: subForm.plan_name,
+        plan_name: subForm.plan_name.trim(),
         status: subForm.status,
-        price: subForm.price ? parseFloat(subForm.price) : null,
-        notes: subForm.notes || null,
+        price: price,
+        notes: subForm.notes?.trim() || null,
         end_date: subForm.end_date || null
       });
 

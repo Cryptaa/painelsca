@@ -16,6 +16,22 @@ export const CreateProjectDialog = ({ onSuccess }: { onSuccess?: () => void }) =
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate inputs
+    if (!name.trim()) {
+      toast.error('Nome do projeto é obrigatório');
+      return;
+    }
+
+    if (name.trim().length > 100) {
+      toast.error('Nome deve ter no máximo 100 caracteres');
+      return;
+    }
+
+    if (description && description.length > 1000) {
+      toast.error('Descrição deve ter no máximo 1000 caracteres');
+      return;
+    }
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       toast.error('Usuário não autenticado');
@@ -23,8 +39,8 @@ export const CreateProjectDialog = ({ onSuccess }: { onSuccess?: () => void }) =
     }
 
     const { error } = await (supabase as any).from('projects').insert({
-      name,
-      description,
+      name: name.trim(),
+      description: description?.trim() || null,
       status: 'active',
       user_id: user.id
     });

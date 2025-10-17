@@ -45,6 +45,20 @@ const Auth = () => {
     const fullName = formData.get("full-name") as string;
     const phone = formData.get("phone") as string;
 
+    // Validate inputs
+    const validation = { email, password, full_name: fullName, phone };
+    
+    // Basic validation
+    if (!email?.trim() || !password) {
+      toast({
+        title: "Erro",
+        description: "Email e senha são obrigatórios",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+
     if (password.length < 6) {
       toast({
         title: "Erro",
@@ -55,14 +69,65 @@ const Auth = () => {
       return;
     }
 
+    if (password.length > 100) {
+      toast({
+        title: "Erro",
+        description: "A senha deve ter no máximo 100 caracteres",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast({
+        title: "Erro",
+        description: "Formato de email inválido",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+
+    if (email.length > 255) {
+      toast({
+        title: "Erro",
+        description: "Email muito longo",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+
+    if (fullName && fullName.length > 100) {
+      toast({
+        title: "Erro",
+        description: "Nome muito longo (máximo 100 caracteres)",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+
+    if (phone && phone.trim() && !/^\+?[1-9]\d{0,14}$/.test(phone)) {
+      toast({
+        title: "Erro",
+        description: "Formato de telefone inválido",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+
     const { error } = await supabase.auth.signUp({
-      email,
+      email: email.trim(),
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/`,
         data: {
-          full_name: fullName,
-          phone: phone,
+          full_name: fullName?.trim() || '',
+          phone: phone?.trim() || '',
         },
       },
     });
@@ -91,8 +156,19 @@ const Auth = () => {
     const email = formData.get("signin-email") as string;
     const password = formData.get("signin-password") as string;
 
+    // Validate inputs
+    if (!email?.trim() || !password) {
+      toast({
+        title: "Erro",
+        description: "Email e senha são obrigatórios",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
-      email,
+      email: email.trim(),
       password,
     });
 

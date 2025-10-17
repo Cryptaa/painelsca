@@ -58,6 +58,36 @@ export const AddRevenueDialog = ({ onSuccess }: { onSuccess?: () => void }) => {
       return;
     }
 
+    const gross = parseFloat(grossAmount);
+    const percentage = parseFloat(gatewayPercentage) || 0;
+    const fixed = parseFloat(gatewayFixedFee) || 0;
+
+    // Validate inputs
+    if (isNaN(gross) || gross <= 0) {
+      toast.error('Valor bruto deve ser maior que zero');
+      return;
+    }
+
+    if (gross > 999999999.99) {
+      toast.error('Valor bruto muito alto');
+      return;
+    }
+
+    if (isNaN(percentage) || percentage < 0 || percentage > 100) {
+      toast.error('Taxa percentual deve estar entre 0 e 100');
+      return;
+    }
+
+    if (isNaN(fixed) || fixed < 0 || fixed > 999999.99) {
+      toast.error('Taxa fixa inválida');
+      return;
+    }
+
+    if (!date) {
+      toast.error('Data é obrigatória');
+      return;
+    }
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       toast.error('Usuário não autenticado');
@@ -67,9 +97,9 @@ export const AddRevenueDialog = ({ onSuccess }: { onSuccess?: () => void }) => {
     const tz = 'America/Sao_Paulo';
     const { error } = await (supabase as any).from('revenues').insert({
       project_id: selectedProject,
-      gross_amount: parseFloat(grossAmount),
-      gateway_percentage: parseFloat(gatewayPercentage) || 0,
-      gateway_fixed_fee: parseFloat(gatewayFixedFee) || 0,
+      gross_amount: gross,
+      gateway_percentage: percentage,
+      gateway_fixed_fee: fixed,
       net_amount: netAmount,
       date: fromZonedTime(`${date}T00:00:00`, tz).toISOString(),
       user_id: user.id
