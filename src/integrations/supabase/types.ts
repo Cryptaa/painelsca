@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      global_tasks: {
+        Row: {
+          completed: boolean
+          created_at: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean
+          created_at?: string
+          id?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed?: boolean
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ideas: {
         Row: {
           brainstorm: string | null
@@ -229,6 +256,66 @@ export type Database = {
           },
         ]
       }
+      personal_expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          date: string
+          description: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      personal_incomes: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          date: string
+          description: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       personal_notes: {
         Row: {
           content: string
@@ -266,6 +353,78 @@ export type Database = {
           reminder_date?: string | null
           tags?: string[] | null
           title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      personal_pending_payments: {
+        Row: {
+          amount: number
+          category: string
+          completed: boolean
+          created_at: string
+          description: string | null
+          due_date: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          completed?: boolean
+          created_at?: string
+          description?: string | null
+          due_date: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          completed?: boolean
+          created_at?: string
+          description?: string | null
+          due_date?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      personal_pending_receipts: {
+        Row: {
+          amount: number
+          category: string
+          completed: boolean
+          created_at: string
+          description: string | null
+          expected_date: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          completed?: boolean
+          created_at?: string
+          description?: string | null
+          expected_date: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          completed?: boolean
+          created_at?: string
+          description?: string | null
+          expected_date?: string
+          id?: string
           updated_at?: string
           user_id?: string
         }
@@ -400,6 +559,7 @@ export type Database = {
           price: number | null
           start_date: string
           status: string
+          subscriber_number: string | null
           updated_at: string
           user_id: string
         }
@@ -412,6 +572,7 @@ export type Database = {
           price?: number | null
           start_date?: string
           status?: string
+          subscriber_number?: string | null
           updated_at?: string
           user_id: string
         }
@@ -424,6 +585,7 @@ export type Database = {
           price?: number | null
           start_date?: string
           status?: string
+          subscriber_number?: string | null
           updated_at?: string
           user_id?: string
         }

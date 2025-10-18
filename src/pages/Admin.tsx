@@ -32,6 +32,7 @@ interface Subscription {
   end_date: string | null;
   price: number | null;
   notes: string | null;
+  subscriber_number: string | null;
   profiles: Profile;
 }
 
@@ -42,6 +43,7 @@ const Admin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [subDialogOpen, setSubDialogOpen] = useState(false);
+  const [editingSub, setEditingSub] = useState<Subscription | null>(null);
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const navigate = useNavigate();
@@ -53,7 +55,8 @@ const Admin = () => {
     status: "active",
     price: "",
     notes: "",
-    end_date: ""
+    end_date: "",
+    subscriber_number: ""
   });
 
   const [profileForm, setProfileForm] = useState({
@@ -323,7 +326,7 @@ const Admin = () => {
   };
 
   const handleAddSubscription = async () => {
-    if (!selectedUser) {
+    if (!editingSub && !selectedUser) {
       toast({
         title: "Erro",
         description: "Selecione um usuário",
@@ -370,38 +373,80 @@ const Admin = () => {
       return;
     }
 
-    const { error } = await (supabase as any)
-      .from("subscriptions")
-      .insert({
-        user_id: selectedUser,
-        plan_name: subForm.plan_name.trim(),
-        status: subForm.status,
-        price: price,
-        notes: subForm.notes?.trim() || null,
-        end_date: subForm.end_date || null
-      });
+    if (editingSub) {
+      // Update existing subscription
+      const { error } = await (supabase as any)
+        .from("subscriptions")
+        .update({
+          plan_name: subForm.plan_name.trim(),
+          status: subForm.status,
+          price: price,
+          notes: subForm.notes?.trim() || null,
+          end_date: subForm.end_date || null,
+          subscriber_number: subForm.subscriber_number?.trim() || null
+        })
+        .eq('id', editingSub.id);
 
-    if (error) {
-      toast({
-        title: "Erro ao criar assinatura",
-        description: error.message,
-        variant: "destructive",
-      });
+      if (error) {
+        toast({
+          title: "Erro ao atualizar assinatura",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Assinatura atualizada",
+          description: "A assinatura foi atualizada com sucesso",
+        });
+        setSubDialogOpen(false);
+        setEditingSub(null);
+        setSubForm({
+          plan_name: "",
+          status: "active",
+          price: "",
+          notes: "",
+          end_date: "",
+          subscriber_number: ""
+        });
+        loadSubscriptions();
+      }
     } else {
-      toast({
-        title: "Assinatura criada",
-        description: "A assinatura foi criada com sucesso",
-      });
-      setSubDialogOpen(false);
-      setSelectedUser(null);
-      setSubForm({
-        plan_name: "",
-        status: "active",
-        price: "",
-        notes: "",
-        end_date: ""
-      });
-      loadSubscriptions();
+      // Create new subscription
+      const { error } = await (supabase as any)
+        .from("subscriptions")
+        .insert({
+          user_id: selectedUser,
+          plan_name: subForm.plan_name.trim(),
+          status: subForm.status,
+          price: price,
+          notes: subForm.notes?.trim() || null,
+          end_date: subForm.end_date || null,
+          subscriber_number: subForm.subscriber_number?.trim() || null
+        });
+
+      if (error) {
+        toast({
+          title: "Erro ao criar assinatura",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Assinatura criada",
+          description: "A assinatura foi criada com sucesso",
+        });
+        setSubDialogOpen(false);
+        setSelectedUser(null);
+        setSubForm({
+          plan_name: "",
+          status: "active",
+          price: "",
+          notes: "",
+          end_date: "",
+          subscriber_number: ""
+        });
+        loadSubscriptions();
+      }
     }
   };
 
@@ -541,7 +586,20 @@ const Admin = () => {
                     Gerencie as assinaturas dos usuários
                   </CardDescription>
                 </div>
-                <Dialog open={subDialogOpen} onOpenChange={setSubDialogOpen}>
+                <Dialog open={subDialogOpen} onOpenChange={(open) => {
+                  setSubDialogOpen(open);
+                  if (!open) {
+                    setEditingSub(null);
+                    setSubForm({
+                      plan_name: "",
+                      status: "active",
+                      price: "",
+                      notes: "",
+                      end_date: "",
+                      subscriber_number: ""
+                    });
+                  }
+                }}>
                   <DialogTrigger asChild>
                     <Button>
                       <Plus className="mr-2 h-4 w-4" />
@@ -550,24 +608,26 @@ const Admin = () => {
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Nova Assinatura</DialogTitle>
+                      <DialogTitle>{editingSub ? 'Editar Assinatura' : 'Nova Assinatura'}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
-                      <div>
-                        <Label>Usuário</Label>
-                        <Select value={selectedUser || ""} onValueChange={setSelectedUser}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione um usuário" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {profiles.map(p => (
-                              <SelectItem key={p.id} value={p.id}>
-                                {p.email} - {p.full_name || "Sem nome"}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      {!editingSub && (
+                        <div>
+                          <Label>Usuário</Label>
+                          <Select value={selectedUser || ""} onValueChange={setSelectedUser}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione um usuário" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {profiles.map(p => (
+                                <SelectItem key={p.id} value={p.id}>
+                                  {p.email} - {p.full_name || "Sem nome"}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                       <div>
                         <Label>Nome do Plano</Label>
                         <Input
@@ -609,6 +669,14 @@ const Admin = () => {
                         />
                       </div>
                       <div>
+                        <Label>Número do Assinante</Label>
+                        <Input
+                          value={subForm.subscriber_number}
+                          onChange={(e) => setSubForm({...subForm, subscriber_number: e.target.value})}
+                          placeholder="Ex: 12345"
+                        />
+                      </div>
+                      <div>
                         <Label>Notas</Label>
                         <Input
                           value={subForm.notes}
@@ -617,7 +685,7 @@ const Admin = () => {
                         />
                       </div>
                       <Button onClick={handleAddSubscription} className="w-full">
-                        Criar Assinatura
+                        {editingSub ? 'Salvar Alterações' : 'Criar Assinatura'}
                       </Button>
                     </div>
                   </DialogContent>
@@ -632,6 +700,7 @@ const Admin = () => {
                       <TableRow>
                         <TableHead>Usuário</TableHead>
                         <TableHead>Plano</TableHead>
+                        <TableHead>Nº Assinante</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Preço</TableHead>
                         <TableHead>Início</TableHead>
@@ -649,6 +718,7 @@ const Admin = () => {
                             </div>
                           </TableCell>
                           <TableCell>{sub.plan_name}</TableCell>
+                          <TableCell>{sub.subscriber_number || '-'}</TableCell>
                           <TableCell>
                             <span className={`px-2 py-1 rounded-full text-xs ${
                               sub.status === 'active' ? 'bg-green-500/20 text-green-500' :
@@ -670,13 +740,33 @@ const Admin = () => {
                             {sub.end_date ? format(new Date(sub.end_date), "dd/MM/yyyy", { locale: ptBR }) : '-'}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteSubscription(sub.id)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
+                            <div className="flex gap-2 justify-end">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  setEditingSub(sub);
+                                  setSubForm({
+                                    plan_name: sub.plan_name,
+                                    status: sub.status,
+                                    price: sub.price?.toString() || "",
+                                    notes: sub.notes || "",
+                                    end_date: sub.end_date ? format(new Date(sub.end_date), 'yyyy-MM-dd') : "",
+                                    subscriber_number: sub.subscriber_number || ""
+                                  });
+                                  setSubDialogOpen(true);
+                                }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteSubscription(sub.id)}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}

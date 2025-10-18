@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardCard } from "@/components/DashboardCard";
 import { ProjectCard } from "@/components/ProjectCard";
@@ -9,6 +9,8 @@ import { LearningDialog } from "@/components/LearningDialog";
 import { AddRevenueDialog } from "@/components/AddRevenueDialog";
 import { AddInvestmentDialog } from "@/components/AddInvestmentDialog";
 import { CreateProjectDialog } from "@/components/CreateProjectDialog";
+import { GlobalTasksSection } from "@/components/GlobalTasksSection";
+import { Navbar } from "@/components/Navbar";
 import { Wallet, TrendingUp, DollarSign, LogOut, Lightbulb, Settings, Calendar, FileText, Plus, Search, Tag, SortAsc, BookOpen, Filter, TrendingUpIcon, Star, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -110,6 +112,24 @@ const Index = () => {
     licao: 0,
     reflexao: 0
   });
+
+  // Refs for sections
+  const financialSummaryRef = useRef<HTMLDivElement>(null);
+  const projectsRef = useRef<HTMLDivElement>(null);
+  const tasksRef = useRef<HTMLDivElement>(null);
+  const notesRef = useRef<HTMLDivElement>(null);
+  const learningsRef = useRef<HTMLDivElement>(null);
+
+  const handleNavigate = (section: string) => {
+    const refs = {
+      'financial-summary': financialSummaryRef,
+      'projects': projectsRef,
+      'tasks': tasksRef,
+      'notes': notesRef,
+      'learnings': learningsRef
+    };
+    refs[section as keyof typeof refs]?.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -601,15 +621,23 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-primary/20 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">
+        <div className="container mx-auto px-4 sm:px-6 py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <h1 className="text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">
               Gestão SCA
             </h1>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={() => navigate("/personal-finances")}
+                variant="outline"
+                className="border-primary/20 text-xs sm:text-sm"
+              >
+                Mudar para Gestão de Finanças Pessoais
+              </Button>
               {isAdmin && (
                 <Button
                   variant="outline"
+                  size="sm"
                   onClick={() => navigate("/admin")}
                   className="border-primary/20"
                 >
@@ -619,6 +647,7 @@ const Index = () => {
               )}
               <Button
                 variant="outline"
+                size="sm"
                 onClick={() => navigate("/ideas")}
                 className="border-primary/20"
               >
@@ -629,6 +658,7 @@ const Index = () => {
               <AddInvestmentDialog onSuccess={loadData} />
               <Button
                 variant="outline"
+                size="sm"
                 onClick={handleLogout}
                 className="border-primary/20"
               >
@@ -640,9 +670,11 @@ const Index = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-8 space-y-8">
+      <Navbar onNavigate={handleNavigate} />
+
+      <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
         {/* Dashboard Cards */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in">
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 animate-fade-in">
           <DashboardCard
             title="Investimento Total"
             value={`R$ ${totalStats.totalInvestment.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
@@ -662,7 +694,7 @@ const Index = () => {
         </section>
 
         {/* Visualization Section */}
-        <section className="space-y-4">
+        <section ref={financialSummaryRef} className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <h2 className="text-2xl font-bold text-foreground">Resumo Financeiro</h2>
             <div className="flex flex-col sm:flex-row gap-2">
@@ -756,7 +788,7 @@ const Index = () => {
         </section>
 
         {/* Projects Section */}
-        <section className="space-y-4">
+        <section ref={projectsRef} className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-foreground">Projetos</h2>
             <CreateProjectDialog onSuccess={loadData} />
@@ -788,8 +820,13 @@ const Index = () => {
           )}
         </section>
 
+        {/* Tasks Section */}
+        <div ref={tasksRef}>
+          <GlobalTasksSection />
+        </div>
+
         {/* Personal Notes Section */}
-        <section className="space-y-4">
+        <section ref={notesRef} className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <FileText className="h-6 w-6" />
@@ -892,7 +929,7 @@ const Index = () => {
         </section>
 
         {/* Learnings Section - Diário de Aprendizados */}
-        <section className="space-y-4 animate-fade-in">
+        <section ref={learningsRef} className="space-y-4 animate-fade-in">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <BookOpen className="h-6 w-6" />
