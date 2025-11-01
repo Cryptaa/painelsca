@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge } from "@/components/StatusBadge";
+import { FinancialHistorySection } from "@/components/FinancialHistorySection";
 import { ArrowLeft, Plus, CheckCircle2, Circle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -373,6 +374,9 @@ const ProjectDetail = () => {
             Salvar Notas
           </Button>
         </Card>
+
+        {/* Financial History */}
+        <FinancialHistorySection projectId={id!} />
       </main>
     </div>
   );

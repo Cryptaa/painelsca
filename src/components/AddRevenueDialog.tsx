@@ -111,6 +111,15 @@ export const AddRevenueDialog = ({ onSuccess }: { onSuccess?: () => void }) => {
       return;
     }
 
+    // Update financial history
+    const { data: dayInv } = await (supabase as any).from('investments').select('amount').eq('project_id', selectedProject).gte('date', `${date}T00:00:00`).lte('date', `${date}T23:59:59`);
+    const { data: dayRev } = await (supabase as any).from('revenues').select('net_amount').eq('project_id', selectedProject).gte('date', `${date}T00:00:00`).lte('date', `${date}T23:59:59`);
+    const totalInv = dayInv?.reduce((s: number, i: any) => s + Number(i.amount), 0) || 0;
+    const totalRev = dayRev?.reduce((s: number, r: any) => s + Number(r.net_amount), 0) || 0;
+    const netProfit = totalRev - totalInv;
+    const roi = totalInv > 0 ? (netProfit / totalInv) * 100 : 0;
+    await (supabase as any).from('project_financial_history').upsert({ project_id: selectedProject, user_id: user.id, date, investment_amount: totalInv, revenue_amount: totalRev, net_profit: netProfit, roi }, { onConflict: 'project_id,date' });
+
     toast.success('Faturamento adicionado com sucesso!');
     setOpen(false);
     resetForm();

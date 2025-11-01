@@ -460,6 +460,45 @@ export type Database = {
         }
         Relationships: []
       }
+      project_financial_history: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          investment_amount: number
+          net_profit: number
+          project_id: string
+          revenue_amount: number
+          roi: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          investment_amount?: number
+          net_profit?: number
+          project_id: string
+          revenue_amount?: number
+          roi?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          investment_amount?: number
+          net_profit?: number
+          project_id?: string
+          revenue_amount?: number
+          roi?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       projects: {
         Row: {
           created_at: string
@@ -549,17 +588,49 @@ export type Database = {
           },
         ]
       }
+      subscription_plans: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_months: number
+          id: string
+          is_active: boolean
+          name: string
+          price: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_months: number
+          id?: string
+          is_active?: boolean
+          name: string
+          price: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_months?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          price?: number
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           created_at: string
           end_date: string | null
           id: string
+          is_trial: boolean
           notes: string | null
           plan_name: string
           price: number | null
           start_date: string
           status: string
           subscriber_number: string | null
+          trial_end_at: string | null
           updated_at: string
           user_id: string
         }
@@ -567,12 +638,14 @@ export type Database = {
           created_at?: string
           end_date?: string | null
           id?: string
+          is_trial?: boolean
           notes?: string | null
           plan_name: string
           price?: number | null
           start_date?: string
           status?: string
           subscriber_number?: string | null
+          trial_end_at?: string | null
           updated_at?: string
           user_id: string
         }
@@ -580,12 +653,14 @@ export type Database = {
           created_at?: string
           end_date?: string | null
           id?: string
+          is_trial?: boolean
           notes?: string | null
           plan_name?: string
           price?: number | null
           start_date?: string
           status?: string
           subscriber_number?: string | null
+          trial_end_at?: string | null
           updated_at?: string
           user_id?: string
         }

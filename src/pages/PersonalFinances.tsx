@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { FinancialChart } from "@/components/FinancialChart";
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
@@ -61,7 +62,7 @@ interface Transaction {
 const PersonalFinances = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
-  const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'custom'>('today');
+  const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'total' | 'custom'>('today');
   const [customStartDate, setCustomStartDate] = useState<Date>();
   const [customEndDate, setCustomEndDate] = useState<Date>();
   const [tempStartDate, setTempStartDate] = useState<Date>();
@@ -100,6 +101,50 @@ const PersonalFinances = () => {
   useEffect(() => {
     if (user) {
       loadData();
+      
+      // Set up realtime subscriptions
+      const expensesChannel = supabase
+        .channel('personal-expenses-changes')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'personal_expenses' },
+          () => loadData()
+        )
+        .subscribe();
+
+      const incomesChannel = supabase
+        .channel('personal-incomes-changes')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'personal_incomes' },
+          () => loadData()
+        )
+        .subscribe();
+
+      const paymentsChannel = supabase
+        .channel('personal-payments-changes')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'personal_pending_payments' },
+          () => loadData()
+        )
+        .subscribe();
+
+      const receiptsChannel = supabase
+        .channel('personal-receipts-changes')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'personal_pending_receipts' },
+          () => loadData()
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(expensesChannel);
+        supabase.removeChannel(incomesChannel);
+        supabase.removeChannel(paymentsChannel);
+        supabase.removeChannel(receiptsChannel);
+      };
     }
   }, [user, dateFilter, customStartDate, customEndDate]);
 
@@ -114,46 +159,47 @@ const PersonalFinances = () => {
 
   const loadData = async () => {
     const tz = 'America/Sao_Paulo';
-    let startIso: string;
-    let endIso: string;
+    let expensesQuery = (supabase as any).from('personal_expenses').select('*');
+    let incomesQuery = (supabase as any).from('personal_incomes').select('*');
 
-    if (dateFilter === 'custom' && customStartDate && customEndDate) {
-      const startStr = format(customStartDate, 'yyyy-MM-dd');
-      const endStr = format(customEndDate, 'yyyy-MM-dd');
-      startIso = fromZonedTime(`${startStr}T00:00:00`, tz).toISOString();
-      endIso = fromZonedTime(`${endStr}T23:59:59.999`, tz).toISOString();
-    } else {
-      const now = new Date();
-      const zoned = toZonedTime(now, tz);
-      const startLocal = dateFilter === 'week'
-        ? startOfWeek(zoned, { locale: ptBR })
-        : dateFilter === 'month'
-          ? startOfMonth(zoned)
-          : startOfDay(zoned);
-      const endLocal = dateFilter === 'week'
-        ? endOfWeek(zoned, { locale: ptBR })
-        : dateFilter === 'month'
-          ? endOfMonth(zoned)
-          : endOfDay(zoned);
-      startIso = fromZonedTime(startLocal, tz).toISOString();
-      endIso = fromZonedTime(endLocal, tz).toISOString();
+    // Only apply date filters if not "total"
+    if (dateFilter !== 'total') {
+      let startIso: string;
+      let endIso: string;
+
+      if (dateFilter === 'custom' && customStartDate && customEndDate) {
+        const startStr = format(customStartDate, 'yyyy-MM-dd');
+        const endStr = format(customEndDate, 'yyyy-MM-dd');
+        startIso = fromZonedTime(`${startStr}T00:00:00`, tz).toISOString();
+        endIso = fromZonedTime(`${endStr}T23:59:59.999`, tz).toISOString();
+      } else {
+        // Get current time in Brazil timezone
+        const now = new Date();
+        const zoned = toZonedTime(now, tz);
+        
+        const startLocal = dateFilter === 'week'
+          ? startOfWeek(zoned, { locale: ptBR })
+          : dateFilter === 'month'
+            ? startOfMonth(zoned)
+            : startOfDay(zoned);
+        const endLocal = dateFilter === 'week'
+          ? endOfWeek(zoned, { locale: ptBR })
+          : dateFilter === 'month'
+            ? endOfMonth(zoned)
+            : endOfDay(zoned);
+        startIso = fromZonedTime(startLocal, tz).toISOString();
+        endIso = fromZonedTime(endLocal, tz).toISOString();
+      }
+
+      expensesQuery = expensesQuery.gte('date', startIso).lte('date', endIso);
+      incomesQuery = incomesQuery.gte('date', startIso).lte('date', endIso);
     }
 
     // Load expenses
-    const { data: expensesData } = await (supabase as any)
-      .from('personal_expenses')
-      .select('*')
-      .gte('date', startIso)
-      .lte('date', endIso)
-      .order('date', { ascending: false });
+    const { data: expensesData } = await expensesQuery.order('date', { ascending: false });
 
     // Load incomes
-    const { data: incomesData } = await (supabase as any)
-      .from('personal_incomes')
-      .select('*')
-      .gte('date', startIso)
-      .lte('date', endIso)
-      .order('date', { ascending: false });
+    const { data: incomesData } = await incomesQuery.order('date', { ascending: false });
 
     // Load pending payments
     const { data: paymentsData } = await (supabase as any)
@@ -398,6 +444,7 @@ const PersonalFinances = () => {
                 <SelectItem value="today">Hoje</SelectItem>
                 <SelectItem value="week">Esta Semana</SelectItem>
                 <SelectItem value="month">Este Mês</SelectItem>
+                <SelectItem value="total">Total</SelectItem>
                 <SelectItem value="custom">Personalizado</SelectItem>
               </SelectContent>
             </Select>
@@ -483,6 +530,18 @@ const PersonalFinances = () => {
               </p>
             </Card>
           </div>
+        </section>
+
+        {/* Gráfico */}
+        <section>
+          <FinancialChart 
+            data={transactions.slice(0, 10).reverse().map(t => ({
+              date: format(new Date(t.date), 'dd/MM'),
+              expenses: t.type === 'expense' ? t.amount : 0,
+              income: t.type === 'income' ? t.amount : 0,
+              balance: stats.balance
+            }))}
+          />
         </section>
 
         {/* Gastos e Entradas */}
